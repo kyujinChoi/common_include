@@ -1,7 +1,7 @@
 #ifndef XML_H_
 #define XML_H_
 
-#include "Parameter/Parameter.h"
+#include "parameter/parameter.h"
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
