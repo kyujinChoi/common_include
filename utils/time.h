@@ -76,6 +76,19 @@ inline std::string getYYMMDDHHMMSS()
 
   return fn.str();
 }
+inline double getTimesec()
+{
+  struct timeval time_now
+  {
+  };
+  gettimeofday(&time_now, nullptr);
+  // std::stringstream time_ss;
+  double usec = time_now.tv_sec % 10000 * 1000 * 1000;
+  usec += time_now.tv_usec;
+  usec = usec / 1000.0 / 1000.0;
+
+  return usec;
+}
 inline void printCurTime()
 {
   struct timeval time_now {};
