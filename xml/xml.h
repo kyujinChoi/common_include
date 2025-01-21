@@ -21,5 +21,5 @@ private:
     xmlDoc *doc = NULL;
     xmlNode *root_element = NULL;
 };
-#include "Xml.hpp"
+#include "xml.hpp"
 #endif

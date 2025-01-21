@@ -9,6 +9,12 @@
 #include <sstream>
 #include <mutex>
 
+struct ProcessUsage
+{
+    std::string name;
+    int pid;
+    long int cpuTime;
+};
 struct CpuUsage
 {
     long user;       // 사용자 모드 시간
@@ -29,7 +35,8 @@ struct CpuUsage
 
     long active() const
     {
-        return user + nice + system + irq + softirq + steal + guest + guest_nice;
+        return user + nice + system;
+        //  + irq + softirq + steal + guest + guest_nice;
     }
 };
 
@@ -59,7 +66,7 @@ public:
     std::vector<float> getCpuUsage()
     {
         // CPU 사용량 출력
-        while(!is_initialized)
+        while (!is_initialized)
             usleep(1000);
         cpu_mtx.lock();
         for (size_t i = 1; i < prev_cpuUsages.size(); ++i)
@@ -79,7 +86,7 @@ public:
             if (totalDiff > 0)
             {
                 float usagePercent = (static_cast<float>(activeDiff) / totalDiff) * 100;
-                cpu_usage[i-1] = usagePercent;
+                cpu_usage[i - 1] = usagePercent;
             }
         }
         cpu_mtx.unlock();
@@ -87,7 +94,7 @@ public:
     }
     std::unordered_map<std::string, std::pair<float, float>> getNetUsageMB()
     {
-        while(!is_initialized)
+        while (!is_initialized)
             usleep(1000);
         net_mtx.lock();
         for (const auto &[iface, initial] : prev_netUsages)
@@ -113,7 +120,7 @@ public:
     }
     std::pair<int, int> getMemoryUsageMB()
     {
-        while(!is_initialized)
+        while (!is_initialized)
             usleep(1000);
         std::ifstream file("/proc/meminfo");
         std::string currentKey;
@@ -149,7 +156,7 @@ public:
 
         return std::make_pair((memTotal / 1000000), usedMemory);
     }
-    inline std::pair<double, double> getDriveUsageGB(std::string path)
+    std::pair<double, double> getDriveUsageGB(std::string path)
     {
         double dGB = -1;
         double dGBUsed = -1;
@@ -169,6 +176,42 @@ public:
         }
         return std::make_pair(dGB, dGBUsed);
     }
+    std::vector<std::pair<std::string, double>> getBusyProcesses()
+    {
+        std::vector<std::pair<std::string, double>> busy_processes;
+        getProcesses();
+
+        if (prev_processes.empty())
+            return busy_processes;
+
+        cpu_mtx.lock();
+        long totalInitial = prev_cpuUsages[0].total();
+        long totalFinal = cur_cpuUsages[0].total();
+        long activeInitial = prev_cpuUsages[0].active();
+        long activeFinal = cur_cpuUsages[0].active();
+        cpu_mtx.unlock();
+        for (int i = 0; i < cur_processes.size(); i++)
+        {
+            for (int j = 0; j < prev_processes.size(); j++)
+            {
+                if (prev_processes[j].pid == cur_processes[i].pid)
+                {
+                    double usage = 100.0 * (cur_processes[i].cpuTime - prev_processes[j].cpuTime) / (activeFinal - activeInitial);
+                    busy_processes.push_back({cur_processes[i].name, usage});
+                    break;
+                }
+            }
+        }
+        std::sort(busy_processes.begin(), busy_processes.end(), [](const std::pair<std::string, double> &a, const std::pair<std::string, double> &b)
+                { return a.second > b.second; });
+        busy_processes.resize(5);
+        // for (int i = 0; i < busy_processes.size(); i++)
+        // {
+        //     std::cout << busy_processes[i].first << " : " << busy_processes[i].second << std::endl;
+        // }
+        return busy_processes;
+    }
+
 private:
     void monitorCpuUsage()
     {
@@ -280,9 +323,113 @@ private:
         }
         return;
     }
+    long int getProcessCpuTime(int pid)
+    {
+        std::string statFile = "/proc/" + std::to_string(pid) + "/stat";
+        std::ifstream statStream(statFile);
 
-public:
+        if (!statStream.is_open())
+        {
+            return -1;
+        }
+
+        std::string line;
+        if (!std::getline(statStream, line) || line.empty())
+        {
+            std::cerr << "Failed to read from stat file for PID " << pid << std::endl;
+            return -1; // getline 실패
+        }
+        statStream.close();
+
+        std::istringstream iss(line);
+        std::vector<std::string> stats;
+        try
+        {
+            stats = std::vector<std::string>((std::istream_iterator<std::string>(iss)), std::istream_iterator<std::string>());
+        }
+        catch (const std::exception &e)
+        {
+            std::cerr << "Error reading stats for PID " << pid << ": " << e.what() << std::endl;
+            return -1;
+        }
+
+        if (stats.size() > 21)
+        {
+            // utime (14번째)와 stime (15번째)를 더해서 CPU 사용 시간 계산
+            try
+            {
+                long int utime = std::stol(stats[13]);
+                long int stime = std::stol(stats[14]);
+                return utime + stime;
+            }
+            catch (const std::exception &e)
+            {
+                std::cerr << "Error parsing CPU times for PID " << pid << ": " << e.what() << std::endl;
+                return -1;
+            }
+        }
+
+        return -1;
+    }
+
+    // 프로세스 이름을 읽어옴
+    std::string getProcessName(int pid)
+    {
+        std::string commFile = "/proc/" + std::to_string(pid) + "/comm";
+        std::ifstream commStream(commFile);
+
+        if (!commStream.is_open())
+        {
+            return "";
+        }
+
+        std::string name;
+        std::getline(commStream, name);
+        commStream.close();
+
+        return name;
+    }
+    void getProcesses()
+    {
+        prev_processes = cur_processes;
+        cur_processes.clear();
+
+        DIR *dir = opendir("/proc");
+
+        if (!dir)
+        {
+            std::cerr << "Cannot open /proc directory." << std::endl;
+            return;
+        }
+        std::vector<std::string> pidList;
+        struct dirent *entry;
+        while ((entry = readdir(dir)) != nullptr)
+        {
+            if (entry->d_type == DT_DIR && isdigit(entry->d_name[0]))
+            {
+                pidList.push_back(entry->d_name); // 숫자인 경우 PID 리스트에 추가
+            }
+        }
+        closedir(dir);
+        for (int i = 0; i < pidList.size(); i++)
+        {
+            int pid = std::stoi(pidList[i]);
+            long int cpuTime = getProcessCpuTime(pid);
+            std::string name = getProcessName(pid);
+            if (cpuTime > 0 && name != "")
+                cur_processes.push_back({name, pid, cpuTime});
+        }
+        // std::sort(cur_processes.begin(), cur_processes.end(), [](const ProcessUsage &a, const ProcessUsage &b)
+        //           { return a.cpuTime > b.cpuTime; });
+
+        // // 20개 초과 시 가장 낮은 cpuTime을 가진 항목 삭제
+        // if (cur_processes.size() > 20)
+        //     cur_processes.resize(20);
+        return;
+    }
+
 private:
+    std::deque<ProcessUsage> prev_processes, cur_processes;
     std::unordered_map<std::string, NetUsage> prev_netUsages, cur_netUsages;
     std::vector<CpuUsage> prev_cpuUsages, cur_cpuUsages;
     std::vector<float> cpu_usage;
