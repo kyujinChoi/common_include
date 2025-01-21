@@ -8,6 +8,7 @@
 #include <vector>
 #include <sstream>
 #include <mutex>
+#include <deque>
 
 struct ProcessUsage
 {

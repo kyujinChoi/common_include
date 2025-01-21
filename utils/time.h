@@ -5,6 +5,8 @@
 #include <iomanip>
 #include <sys/time.h>
 #include <sys/timerfd.h>
+#include <unistd.h>
+
 inline int init_timerfd(int msec)
 {
     int fd = -1;
