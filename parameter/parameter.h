@@ -19,8 +19,8 @@ typedef signed int int32;
 class Parameter
 {
 public:
-    Parameter(){};
-    ~Parameter(){};
+    Parameter() {};
+    ~Parameter() {};
 
     bool find(std::string key)
     {
@@ -28,43 +28,37 @@ public:
             return false;
         return true;
     }
-    
-    bool modifyParam(std::string key, boost::variant<int, std::string, double, bool> value)
+    template <typename T>
+    bool modifyParam(std::string key, const T &value)
     {
         if (params.find(key) == params.end())
             return false;
         params[key] = value;
         return true;
     }
-    bool insertParam(std::string key, boost::variant<int, std::string, double, bool> value)
+    template <typename T>
+    bool insertParam(const std::string &key, const T &value)
     {
-        if (params.find(key) == params.end())
-        {
-            params[key] = value;
-            return true;
-        }
-        else
-        {
-            params[key] = value;
-            return true;
-        }
-        return false;
+
+        params[key] = value;
+
+        return true;
     }
     int getParamInt(std::string key)
     {
         auto iter = params.find(key);
         if (iter != params.end())
         {
-            switch(iter->second.which())
+            switch (iter->second.which())
             {
-                case 0 :
-                    return boost::get<int>(iter->second);
-                case 1 :
-                    return std::stoi(boost::get<std::string>(iter->second));
-                case 2 :
-                    return (int)round(boost::get<double>(iter->second));
-                case 3 :
-                    return (int)(boost::get<bool>(iter->second));
+            case 0:
+                return boost::get<int>(iter->second);
+            case 1:
+                return std::stoi(boost::get<std::string>(iter->second));
+            case 2:
+                return (int)round(boost::get<double>(iter->second));
+                // case 3 :
+                //     return (int)(boost::get<bool>(iter->second));
             }
         }
         return 0;
@@ -74,16 +68,16 @@ public:
         auto iter = params.find(key);
         if (iter != params.end())
         {
-            switch(iter->second.which())
+            switch (iter->second.which())
             {
-                case 0 :
-                    return std::to_string(boost::get<int>(iter->second));
-                case 1 :
-                    return boost::get<std::string>(iter->second);
-                case 2 :
-                    return std::to_string(boost::get<double>(iter->second));
-                case 3 :
-                    return boost::get<bool>(iter->second) ? "true" : "false";
+            case 0:
+                return std::to_string(boost::get<int>(iter->second));
+            case 1:
+                return boost::get<std::string>(iter->second);
+            case 2:
+                return std::to_string(boost::get<double>(iter->second));
+                // case 3 :
+                //     return boost::get<bool>(iter->second) ? "true" : "false";
             }
         }
         return "";
@@ -93,16 +87,16 @@ public:
         auto iter = params.find(key);
         if (iter != params.end())
         {
-            switch(iter->second.which())
+            switch (iter->second.which())
             {
-                case 0 :
-                    return double(boost::get<int>(iter->second));
-                case 1 :
-                    return std::stod(boost::get<std::string>(iter->second));
-                case 2 :
-                    return boost::get<double>(iter->second);
-                case 3 :
-                    return (double)(boost::get<bool>(iter->second));
+            case 0:
+                return double(boost::get<int>(iter->second));
+            case 1:
+                return std::stod(boost::get<std::string>(iter->second));
+            case 2:
+                return boost::get<double>(iter->second);
+                // case 3 :
+                //     return (double)(boost::get<bool>(iter->second));
             }
         }
         return 0;
@@ -112,21 +106,21 @@ public:
         auto iter = params.find(key);
         if (iter != params.end())
         {
-            switch(iter->second.which())
+            switch (iter->second.which())
             {
-                case 0 :
-                    return (bool)(boost::get<int>(iter->second));
-                case 1 :
-                    return (bool)(std::stoi(boost::get<std::string>(iter->second)));
-                case 2 :
-                    return (bool)(round(boost::get<double>(iter->second)));
-                case 3 :
-                    return boost::get<bool>(iter->second);
+            case 0:
+                return (bool)(boost::get<int>(iter->second));
+            case 1:
+                return (bool)(std::stoi(boost::get<std::string>(iter->second)));
+            case 2:
+                return (bool)(round(boost::get<double>(iter->second)));
+                // case 3 :
+                //     return boost::get<bool>(iter->second);
             }
         }
         return 0;
     }
-    boost::variant<int, std::string, double, bool> getParamVar(std::string key)
+    boost::variant<int, std::string, double> getParamVar(std::string key)
     {
         auto iter = params.find(key);
         if (iter != params.end())
@@ -135,14 +129,14 @@ public:
         }
         return boost::variant<int, std::string>{};
     }
-    std::unordered_map<std::string, boost::variant<int, std::string, double, bool>> getAllParams()
+    std::unordered_map<std::string, boost::variant<int, std::string, double>> getAllParams()
     {
         return params;
     }
     void printAllParams()
     {
         std::cout << "---------------------------------\n";
-        std::vector<std::pair<std::string, boost::variant<int, std::string, double, bool>>> print_params(params.begin(), params.end());
+        std::vector<std::pair<std::string, boost::variant<int, std::string, double>>> print_params(params.begin(), params.end());
         std::sort(print_params.begin(), print_params.end());
         for (auto iter = print_params.begin(); iter != print_params.end(); ++iter)
         {
@@ -170,6 +164,6 @@ public:
     }
 
 protected:
-    std::unordered_map<std::string, boost::variant<int, std::string, double, bool>> params;
+    std::unordered_map<std::string, boost::variant<int, std::string, double>> params;
 };
 #endif
