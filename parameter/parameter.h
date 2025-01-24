@@ -39,7 +39,6 @@ public:
     template <typename T>
     bool insertParam(const std::string &key, const T &value)
     {
-
         params[key] = value;
 
         return true;
