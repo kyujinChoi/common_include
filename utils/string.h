@@ -6,6 +6,7 @@
 #include <vector>
 #include <sstream>
 #include <iomanip>
+#include <algorithm>
 inline std::string to_string_with_precision(double value, int precision = 2)
 {
     std::ostringstream out;
@@ -22,8 +23,9 @@ inline std::vector<std::string> split(std::string str, char Delimiter)
     // istringstream은 istream을 상속받으므로 getline을 사용할 수 있다.
     while (getline(iss, buffer, Delimiter))
     {
-        buffer.erase(remove(buffer.begin(), buffer.end(), ' '), buffer.end());
-        result.push_back(buffer); // 절삭된 문자열을 vector에 저장
+        buffer.erase(std::remove(buffer.begin(), buffer.end(), ' '), buffer.end());
+        if (!buffer.empty())
+            result.push_back(buffer);
     }
 
     return result;
