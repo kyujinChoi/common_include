@@ -141,6 +141,7 @@ public:
         {
             std::cout << "[" << iter->first << "] : " << iter->second << std::endl;
         }
+        std::fflush(stdout);
         std::cout << "---------------------------------\n";
         return;
     }
