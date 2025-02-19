@@ -134,15 +134,14 @@ public:
     }
     void printAllParams()
     {
-        std::cout << "---------------------------------\n";
+        std::cout << "---------------------------------"  << std::endl;
         std::vector<std::pair<std::string, boost::variant<int, std::string, double>>> print_params(params.begin(), params.end());
         std::sort(print_params.begin(), print_params.end());
         for (auto iter = print_params.begin(); iter != print_params.end(); ++iter)
         {
             std::cout << "[" << iter->first << "] : " << iter->second << std::endl;
         }
-        std::fflush(stdout);
-        std::cout << "---------------------------------\n";
+        std::cout << "---------------------------------"  << std::endl;
         return;
     }
     std::vector<std::string> getAllKeys()
