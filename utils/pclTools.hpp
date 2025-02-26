@@ -1,6 +1,9 @@
 #ifndef PCL_TOOLS_HPP
 #define PCL_TOOLS_HPP
 
+#define PCL_NO_PRECOMPILE
+
+
 #pragma once
 
 #include <pcl/point_cloud.h>
@@ -8,6 +11,7 @@
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/filters/uniform_sampling.h>
 #include <pcl/filters/random_sample.h>
+#include "point_type.h"
 
 #include <iostream>
 #include <vector>
@@ -18,6 +22,9 @@ typedef pcl::PointXYZ PointXYZ;
 typedef pcl::PointXYZRGB PointXYZRGB;
 typedef pcl::PointNormal PointNormal;
 typedef pcl::PointXYZI PointXYZI;
+typedef PointXYZIR PointXYZIR;
+typedef PointXYZIRL PointXYZIRL;
+
 
 template <typename PointT>
 class PCL_TOOLS
