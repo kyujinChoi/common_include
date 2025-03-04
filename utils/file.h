@@ -9,7 +9,8 @@
 #include <cstring>
 #include <iostream>
 #include <sys/vfs.h>
-
+#include <fstream>
+#include <sstream>
 
 
 inline void mkdirRecur(std::string path)
@@ -90,5 +91,46 @@ inline std::string getFileName(const std::string path, const std::string extensi
     closedir(dir);
 
     return path+result;
+}
+
+inline void readMarkerCsv(const std::string path, std::vector<double> &leftMarker, std::vector<double> &rightMarker)
+{
+    std::ifstream file(path);
+    std::string line;
+    if (!file.is_open())
+    {
+        std::cerr << "File could not be opened.\n";
+        return;
+    }
+
+    // 각 줄을 읽어들임
+    while (getline(file, line))
+    {
+        std::istringstream iss(line);
+        std::string token, label;
+        double x, y, z;
+
+        // 탭으로 구분된 데이터를 파싱
+        getline(iss, label, '\t'); // 라벨 읽기
+        getline(iss, token, '\t');
+        x = std::stod(token);
+        getline(iss, token, '\t');
+        y = std::stod(token);
+        getline(iss, token, '\t');
+        z = std::stod(token);
+
+        if (label == "L")
+        {
+            leftMarker.push_back(x);
+            leftMarker.push_back(y);
+            leftMarker.push_back(z);
+        }
+        else if (label == "R")
+        {
+            rightMarker.push_back(x);
+            rightMarker.push_back(y);
+            rightMarker.push_back(z);
+        }
+    }
 }
 #endif

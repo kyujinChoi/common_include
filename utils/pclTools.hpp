@@ -3,14 +3,16 @@
 
 #define PCL_NO_PRECOMPILE
 
-
 #pragma once
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/filters/voxel_grid.h>
-#include <pcl/filters/uniform_sampling.h>
 #include <pcl/filters/random_sample.h>
+#include <pcl/filters/uniform_sampling.h>
+
+#include <pcl/common/transforms.h>
+
 #include "point_type.h"
 
 #include <iostream>
@@ -27,7 +29,7 @@ typedef PointXYZIRL PointXYZIRL;
 
 
 template <typename PointT>
-class PCL_TOOLS
+class pclTools
 {
 public:
   // 편의를 위한 typedef (스마트 포인터)
@@ -79,6 +81,25 @@ public:
     random_filter.filter(*output);
     return output;
   }
+
+inline static double calcDist3d(
+    const typename pcl::PointCloud<PointT>::Ptr p1, 
+    const typename pcl::PointCloud<PointT>::Ptr p2)
+{
+    double dist = sqrt((p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y) + (p1.z - p2.z) * (p1.z - p2.z));
+    return dist;
+}
+
+inline static void rotatePointCloud(
+    const typename pcl::PointCloud<PointT>::Ptr inCld,
+    const typename pcl::PointCloud<PointT>::Ptr outCld,
+    const Eigen::Matrix3d &R)
+{
+  Eigen::Matrix4d tf_r(Eigen::Matrix4d::Identity());
+  tf_r.block(0, 0, 3, 3) = R;
+  pcl::transformPointCloud(*inCld, *outCld, tf_r);
+  return;
+}
 };
 
 #endif
@@ -108,40 +129,8 @@ public:
 // }
 ;
 // }
-// inline void rotatePointCloud(
-//     const pcl::PointCloud<pcl::PointXYZ>::Ptr inCld,
-//     const pcl::PointCloud<pcl::PointXYZ>::Ptr outCld,
-//     const Eigen::Matrix3d &R)
-// {
-//   Eigen::Matrix4d tf_r(Eigen::Matrix4d::Identity());
-//   tf_r.block(0, 0, 3, 3) = R;
-//   pcl::transformPointCloud(*inCld, *outCld, tf_r);
-//   return;
-// }
-// inline void filterDist(pcl::PointCloud<PointXYZIRL>::Ptr cloud,
-//                       double thres, bool keep)
-// {
-//   pcl::PointIndices::Ptr inliers(new pcl::PointIndices());
 
-//   for (int i = 0; i < cloud->points.size(); ++i)
-//   {
-//     float distance = sqrt(cloud->points[i].x * cloud->points[i].x +
-//                           cloud->points[i].y * cloud->points[i].y +
-//                           cloud->points[i].z * cloud->points[i].z);
-//     if (distance <= thres)
-//     {
-//       inliers->indices.push_back(i);
-//     }
-//   }
 
-//   // 추출기 객체 생성
-//   pcl::ExtractIndices<PointXYZIRL> extract;
-//   extract.setInputCloud(cloud);
-//   extract.setIndices(inliers);
-//   extract.setNegative(!keep);
-//   extract.filter(*cloud);
-//   return;
-// }
 // inline void filterXYZ(pcl::PointCloud<PointXYZIRL>::Ptr cld,
 //                       pcl::PointXYZ min_p, pcl::PointXYZ max_p, std::string field, bool keep)
 // {
