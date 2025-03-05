@@ -93,7 +93,8 @@ inline std::string getFileName(const std::string path, const std::string extensi
     return path+result;
 }
 
-inline void readMarkerCsv(const std::string path, std::vector<double> &leftMarker, std::vector<double> &rightMarker)
+
+inline void readMarkerCsv(const std::string path, std::vector<std::vector<double>> &leftMarker, std::vector<std::vector<double>> &rightMarker)
 {
     std::ifstream file(path);
     std::string line;
@@ -110,26 +111,16 @@ inline void readMarkerCsv(const std::string path, std::vector<double> &leftMarke
         std::string token, label;
         double x, y, z;
 
-        // 탭으로 구분된 데이터를 파싱
-        getline(iss, label, '\t'); // 라벨 읽기
-        getline(iss, token, '\t');
-        x = std::stod(token);
-        getline(iss, token, '\t');
-        y = std::stod(token);
-        getline(iss, token, '\t');
-        z = std::stod(token);
+        // 공백으로 구분된 데이터를 파싱
+        iss >> label >> x >> y >> z;
 
         if (label == "L")
         {
-            leftMarker.push_back(x);
-            leftMarker.push_back(y);
-            leftMarker.push_back(z);
+            leftMarker.push_back({x, y, z});
         }
         else if (label == "R")
         {
-            rightMarker.push_back(x);
-            rightMarker.push_back(y);
-            rightMarker.push_back(z);
+            rightMarker.push_back({x, y, z});
         }
     }
 }
