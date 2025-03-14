@@ -36,8 +36,8 @@ inline std::string replaceAll(std::string str, std::string from_delimiter, std::
     size_t pos = result.find(from_delimiter);
     while (pos != std::string::npos)
     {
-        result.replace(pos, 1, to_delimiter);
-        pos = result.find(from_delimiter);
+        result.replace(pos, from_delimiter.length(), to_delimiter);
+        pos = result.find(from_delimiter, pos + to_delimiter.length());
     }
     return result;
 }
