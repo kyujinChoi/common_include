@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include <math.h>
+#include <algorithm>
 #include "coconut/coconut.h"
 
 #define PI 3.141592
