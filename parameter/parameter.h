@@ -8,9 +8,10 @@
 #include <string>
 #include <vector>
 #include <math.h>
+#include <algorithm>
 #include "coconut/coconut.h"
 
-#define PI 3.141592
+// #define PI 3.141592
 typedef unsigned char uint8;
 typedef unsigned short uint16;
 typedef unsigned int uint32;
