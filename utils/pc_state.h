@@ -9,6 +9,7 @@
 #include <sstream>
 #include <mutex>
 #include <deque>
+#include <iterator>
 
 struct ProcessUsage
 {
