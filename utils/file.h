@@ -11,11 +11,13 @@
 #include <sys/vfs.h>
 #include <fstream>
 #include <sstream>
+#include <filesystem>
 
-
-inline void mkdirRecur(std::string path)
+inline void mkdirRecur(const std::string& path)
 {
-    mkdir(path.c_str(), 0777);
+    if (!std::filesystem::exists(path)) 
+        std::filesystem::create_directories(path);
+    
     return;
 }
 inline void eraseDir(std::string path)
