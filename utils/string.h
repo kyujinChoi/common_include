@@ -15,16 +15,24 @@ inline std::string to_string_with_precision(double value, int precision = 2)
 }
 inline std::vector<std::string> splitWithEmpty(std::string str, char Delimiter)
 {
-    std::istringstream iss(str); // istringstream에 str을 담는다.
+    std::vector<std::string> result; // istringstream에 str을 담는다.
     std::string buffer;          // 구분자를 기준으로 절삭된 문자열이 담겨지는 버퍼
 
-    std::vector<std::string> result;
-
-    // istringstream은 istream을 상속받으므로 getline을 사용할 수 있다.
-    while (getline(iss, buffer, Delimiter))
+    for (size_t i = 0; i < str.size(); ++i)
     {
-        result.push_back(buffer);
+        if (str[i] == Delimiter)
+        {
+            result.push_back(buffer);
+            buffer.clear();
+        }
+        else
+        {
+            buffer += str[i];
+        }
     }
+
+    // 마지막 항목 추가 (마지막에 Delimiter가 있어도 ""를 넣어야 함)
+    result.push_back(buffer);
 
     return result;
 }
