@@ -13,6 +13,21 @@ inline std::string to_string_with_precision(double value, int precision = 2)
     out << std::fixed << std::setprecision(precision) << value;
     return out.str();
 }
+inline std::vector<std::string> splitWithEmpty(std::string str, char Delimiter)
+{
+    std::istringstream iss(str); // istringstream에 str을 담는다.
+    std::string buffer;          // 구분자를 기준으로 절삭된 문자열이 담겨지는 버퍼
+
+    std::vector<std::string> result;
+
+    // istringstream은 istream을 상속받으므로 getline을 사용할 수 있다.
+    while (getline(iss, buffer, Delimiter))
+    {
+        result.push_back(buffer);
+    }
+
+    return result;
+}
 inline std::vector<std::string> split(std::string str, char Delimiter)
 {
     std::istringstream iss(str); // istringstream에 str을 담는다.
