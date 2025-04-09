@@ -27,7 +27,6 @@ typedef pcl::PointXYZI PointXYZI;
 typedef PointXYZIR PointXYZIR;
 typedef PointXYZIRL PointXYZIRL;
 
-
 template <typename PointT>
 class pclTools
 {
@@ -82,24 +81,58 @@ public:
     return output;
   }
 
-inline static double calcDist3d(
-    const typename pcl::PointCloud<PointT>::Ptr p1, 
-    const typename pcl::PointCloud<PointT>::Ptr p2)
-{
+  inline static double calcDist3d(
+      const typename pcl::PointCloud<PointT>::Ptr p1,
+      const typename pcl::PointCloud<PointT>::Ptr p2)
+  {
     double dist = sqrt((p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y) + (p1.z - p2.z) * (p1.z - p2.z));
     return dist;
-}
+  }
 
-inline static void rotatePointCloud(
-    const typename pcl::PointCloud<PointT>::Ptr inCld,
-    const typename pcl::PointCloud<PointT>::Ptr outCld,
-    const Eigen::Matrix3d &R)
-{
-  Eigen::Matrix4d tf_r(Eigen::Matrix4d::Identity());
-  tf_r.block(0, 0, 3, 3) = R;
-  pcl::transformPointCloud(*inCld, *outCld, tf_r);
-  return;
-}
+  inline static void rotatePointCloud(
+      const typename pcl::PointCloud<PointT>::Ptr inCld,
+      const typename pcl::PointCloud<PointT>::Ptr outCld,
+      const Eigen::Matrix3d &R)
+  {
+    Eigen::Matrix4d tf_r(Eigen::Matrix4d::Identity());
+    tf_r.block(0, 0, 3, 3) = R;
+    pcl::transformPointCloud(*inCld, *outCld, tf_r);
+    return;
+  }
+
+  inline static void removeClosePoints(
+      const typename pcl::PointCloud<PointT>::Ptr inCld,
+      const typename pcl::PointCloud<PointT>::Ptr outCld,
+      const float thres)
+  {
+    outCld->header = inCld->header;
+    outCld->points.resize(inCld->points.size());
+
+    size_t j = 0;
+
+    for (size_t i = 0; i < inCld->points.size(); ++i)
+    {
+      if (isnanl(inCld->points[i].x) || isnanl(inCld->points[i].y) || isnanl(inCld->points[i].z))
+        continue;
+
+      if (inCld->points[i].x * inCld->points[i].x + inCld->points[i].y * inCld->points[i].y + input_cloud->points[i].z * input_cloud->points[i].z < thres * thres)
+        continue;
+
+      outCld->points[j] = inCld->points[i];
+      j++;
+    }
+
+    if (j != inCld->points.size())
+    {
+      outCld->points.resize(j);
+    }
+
+    outCld->height = 1;
+    outCld->width = static_cast<uint32_t>(j);
+    outCld->is_dense = true;
+
+    return;
+  }
 };
 
 #endif
@@ -129,7 +162,6 @@ inline static void rotatePointCloud(
 // }
 ;
 // }
-
 
 // inline void filterXYZ(pcl::PointCloud<PointXYZIRL>::Ptr cld,
 //                       pcl::PointXYZ min_p, pcl::PointXYZ max_p, std::string field, bool keep)
