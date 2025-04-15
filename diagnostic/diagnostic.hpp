@@ -175,7 +175,14 @@ public:
         diag_info_map[diag_key]->diag_status.values.clear();
         return;
     }
-
+    void deleteDiag(std::string diag_key)
+    {
+        clearDiagKeyVal(diag_key);
+        auto it = diag_info_map.find(diag_key);
+        if (it != diag_info_map.end())
+            diag_info_map.erase(it);
+        return;
+    };
 private:
     uint8_t handleTopicPeriod(std::string check_key)
     {
@@ -241,9 +248,9 @@ private:
     void callback100msTimer()
     {
         uint8_t result = OK;
-        std_msgs::msg::UInt8 check_status;
+        std_msgs::msg::UInt8 result_status;
 
-        for (const auto &[key, diag_info] : topic_period_info_map)
+        for (const auto &[key, period_info] : topic_period_info_map)
         {
             uint8_t status = handleTopicPeriod(key);
             if (status == ERROR)
@@ -251,8 +258,24 @@ private:
             else if (status == WARN && result == OK)
                 result = WARN;
         }
-        check_status.data = result;
-        pubCheck->publish(check_status);
+        
+        if(result == ERROR)
+        {
+            result_status.data = result;
+            pubCheck->publish(result_status);
+            return;
+        }
+
+        for (const auto &[key, diag_info] : diag_info_map)
+        {
+            std::lock_guard<std::mutex> lock(diag_info->mtx);
+            if (diag_info->diag_status.level == ERROR)
+                result = ERROR;
+            else if (diag_info->diag_status.level == WARN && result == OK)
+                result = WARN;
+        }
+        result_status.data = result;
+        pubCheck->publish(result_status);
         return;
     }
 
