@@ -175,13 +175,15 @@ public:
         diag_info_map[diag_key]->diag_status.values.clear();
         return;
     }
-    void deleteDiag(std::string diag_key)
+    bool deleteDiag(std::string diag_key)
     {
+        if (!hasDiagKey(diag_key))
+            return false;
         clearDiagKeyVal(diag_key);
         auto it = diag_info_map.find(diag_key);
         if (it != diag_info_map.end())
             diag_info_map.erase(it);
-        return;
+        return true;
     };
 private:
     uint8_t handleTopicPeriod(std::string check_key)
