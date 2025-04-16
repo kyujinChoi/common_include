@@ -115,7 +115,7 @@ public:
       if (isnanl(inCld->points[i].x) || isnanl(inCld->points[i].y) || isnanl(inCld->points[i].z))
         continue;
 
-      if (inCld->points[i].x * inCld->points[i].x + inCld->points[i].y * inCld->points[i].y + input_cloud->points[i].z * input_cloud->points[i].z < thres * thres)
+      if (inCld->points[i].x * inCld->points[i].x + inCld->points[i].y * inCld->points[i].y + inCld->points[i].z * inCld->points[i].z < thres * thres)
         continue;
 
       outCld->points[j] = inCld->points[i];
