@@ -4,13 +4,24 @@
 #include "rclcpp/rclcpp.hpp"
 #include "diagnostic_msgs/msg/diagnostic_array.hpp"
 #include "std_msgs/msg/u_int8.hpp"
+#include "rcl_interfaces/msg/log.hpp"
 #include "parameter/parameter.h"
 
 #pragma once
 
 using namespace std::chrono_literals;
 
-class DiagnosticHandler
+enum
+{
+    DEBUG = 0,  // Debug is for pedantic information, which is useful when debugging issues.
+    INFO = 1,   // Info is the standard informational level and is used to report expected
+    WARN = 2,   // Warning is for information that may potentially cause issues or possibly unexpected
+    ERROR = 3,  // Error is for information that this node cannot resolve.
+    FATAL = 4,  // Information about a impending node shutdown.
+};
+
+
+class StatusReporter
 {
     typedef struct DiagInfo
     {
@@ -35,13 +46,24 @@ class DiagnosticHandler
         STALE = 3
     };
 public:
-    DiagnosticHandler(rclcpp::Node *node, std::string pub_topic) : node_(node), clock_(std::make_shared<rclcpp::Clock>(RCL_ROS_TIME))
+    StatusReporter(rclcpp::Node *node, std::string check_topic) : node_(node), clock_(std::make_shared<rclcpp::Clock>(RCL_ROS_TIME))
     {
         param.insertParam("node_name", node->get_fully_qualified_name());
-        param.insertParam("pub_topic", pub_topic);
+        param.insertParam("check_topic", check_topic);
         initPubs();
     }
-    ~DiagnosticHandler() {}
+    ~StatusReporter() {}
+
+    void pubLogMessage(uint8_t level, std::string msg)
+    {
+        log_msg.name = param.getParamStr("node_name");
+        log_msg.level = level;
+        log_msg.msg = msg;
+        log_msg.stamp = node_->get_clock()->now();
+        pubLog->publish(log_msg);
+
+        return;
+    }
 
     void createTopicPeriodInfo(std::string check_key, double warn_timeout, int warn_max_cnt, double error_timeout)
     {
@@ -184,7 +206,8 @@ public:
         if (it != diag_info_map.end())
             diag_info_map.erase(it);
         return true;
-    };
+    }
+    
 private:
     uint8_t handleTopicPeriod(std::string check_key)
     {
@@ -232,7 +255,6 @@ private:
             clearDiagKeyVal(check_key);
             setDiagKeyVal(check_key, "topic", check_key);
             setDiagKeyVal(check_key, "elapsed_time", std::to_string(time_diff));
-            
             return WARN;
         }
         else
@@ -297,10 +319,11 @@ private:
 
     void initPubs()
     {
-        pubCheck = node_->create_publisher<std_msgs::msg::UInt8>(param.getParamStr("pub_topic"), rclcpp::SensorDataQoS());
+        pubLog = node_->create_publisher<rcl_interfaces::msg::Log>("spatial_logmsg", 1);
+        pubCheck = node_->create_publisher<std_msgs::msg::UInt8>(param.getParamStr("check_topic"), rclcpp::SensorDataQoS());
         pubDiagnostic = node_->create_publisher<diagnostic_msgs::msg::DiagnosticArray>("/diagnostics", 10);
-        timer_100ms = node_->create_wall_timer(100ms, std::bind(&DiagnosticHandler::callback100msTimer, this));
-        timer_1s = node_->create_wall_timer(1s, std::bind(&DiagnosticHandler::callback1sTimer, this));
+        timer_100ms = node_->create_wall_timer(100ms, std::bind(&StatusReporter::callback100msTimer, this));
+        timer_1s = node_->create_wall_timer(1s, std::bind(&StatusReporter::callback1sTimer, this));
 
         return;
     }
@@ -321,7 +344,9 @@ private:
     rclcpp::TimerBase::SharedPtr timer_100ms, timer_1s;
     rclcpp::Publisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr pubDiagnostic;
     rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr pubCheck;
+    rclcpp::Publisher<rcl_interfaces::msg::Log>::SharedPtr pubLog;
     diagnostic_msgs::msg::DiagnosticArray diag_arr_msg;
+    rcl_interfaces::msg::Log log_msg;
 };
 
 #endif
