@@ -30,6 +30,19 @@ inline int init_timerfd(int msec)
 
     return fd;
 }
+inline std::string TimeStampToString(uint32_t sec, uint32_t nanosec) 
+{
+  std::time_t raw_time = static_cast<time_t>(sec);
+  std::tm* timeinfo = std::localtime(&raw_time);  // UTC 기준
+
+  std::ostringstream oss;
+  oss << std::put_time(timeinfo, "%Y-%m-%d %H:%M:%S");
+
+  // 밀리초 단위까지 출력 (소수점 3자리)
+  oss << "." << std::setfill('0') << std::setw(3) << (nanosec / 1000000);
+
+  return oss.str();
+}
 inline unsigned long long wait_timerfd(int fd)
 {
   unsigned long long missed;
