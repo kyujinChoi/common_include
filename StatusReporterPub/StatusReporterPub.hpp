@@ -60,7 +60,7 @@ public:
         log_msg.level = level;
         log_msg.msg = msg;
         log_msg.stamp = node_->get_clock()->now();
-        pubLog->publish(log_msg);
+        pubLogMsg->publish(log_msg);
 
         return;
     }
@@ -319,7 +319,7 @@ private:
 
     void initPubs()
     {
-        pubLog = node_->create_publisher<rcl_interfaces::msg::Log>("spatial_logmsg", 1);
+        pubLogMsg = node_->create_publisher<rcl_interfaces::msg::Log>("/P10/spatial_logmsg", 1);
         pubCheck = node_->create_publisher<std_msgs::msg::UInt8>(param.getParamStr("check_topic"), rclcpp::SensorDataQoS());
         pubDiagnostic = node_->create_publisher<diagnostic_msgs::msg::DiagnosticArray>("/diagnostics", 10);
         timer_100ms = node_->create_wall_timer(100ms, std::bind(&StatusReporter::callback100msTimer, this));
@@ -344,7 +344,7 @@ private:
     rclcpp::TimerBase::SharedPtr timer_100ms, timer_1s;
     rclcpp::Publisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr pubDiagnostic;
     rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr pubCheck;
-    rclcpp::Publisher<rcl_interfaces::msg::Log>::SharedPtr pubLog;
+    rclcpp::Publisher<rcl_interfaces::msg::Log>::SharedPtr pubLogMsg;
     diagnostic_msgs::msg::DiagnosticArray diag_arr_msg;
     rcl_interfaces::msg::Log log_msg;
 };
