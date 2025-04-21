@@ -319,7 +319,7 @@ private:
 
     void initPubs()
     {
-        pubLogMsg = node_->create_publisher<rcl_interfaces::msg::Log>("/P10/spatial_logmsg", 1);
+        pubLogMsg = node_->create_publisher<rcl_interfaces::msg::Log>("spatial_logmsg", 1);
         pubCheck = node_->create_publisher<std_msgs::msg::UInt8>(param.getParamStr("check_topic"), rclcpp::SensorDataQoS());
         pubDiagnostic = node_->create_publisher<diagnostic_msgs::msg::DiagnosticArray>("/diagnostics", 10);
         timer_100ms = node_->create_wall_timer(100ms, std::bind(&StatusReporter::callback100msTimer, this));
