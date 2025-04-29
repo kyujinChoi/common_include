@@ -5,20 +5,20 @@
 #include "diagnostic_msgs/msg/diagnostic_array.hpp"
 #include "std_msgs/msg/u_int8.hpp"
 #include "rcl_interfaces/msg/log.hpp"
-#include "common_include/parameter.h"
+#include "parameter/parameter.h"
 
 #pragma once
 
 using namespace std::chrono_literals;
 
-// enum
-// {
-//     DEBUG = 0,  // Debug is for pedantic information, which is useful when debugging issues.
-//     INFO = 1,   // Info is the standard informational level and is used to report expected
-//     WARN = 2,   // Warning is for information that may potentially cause issues or possibly unexpected
-//     ERROR = 3,  // Error is for information that this node cannot resolve.
-//     FATAL = 4,  // Information about a impending node shutdown.
-// };
+enum
+{
+    DEBUG = 0,  // Debug is for pedantic information, which is useful when debugging issues.
+    INFO = 1,   // Info is the standard informational level and is used to report expected
+    WARN = 2,   // Warning is for information that may potentially cause issues or possibly unexpected
+    ERROR = 3,  // Error is for information that this node cannot resolve.
+    FATAL = 4,  // Information about a impending node shutdown.
+};
 
 
 class StatusReporter
