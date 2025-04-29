@@ -96,23 +96,15 @@ public:
     {
 
         rclcpp::Time cur_update_time = clock_->now();
-        rclcpp::Time prev_time;
-
-        topic_period_info_map[check_key]->frame_time_diff = (cur_update_time - topic_period_info_map[check_key]->received_time).seconds();
-
-
+      
         {
             std::lock_guard<std::mutex> lock(topic_period_info_map[check_key]->mtx);
-            prev_time = topic_period_info_map[check_key]->received_time;
+            topic_period_info_map[check_key]->frame_time_diff = (cur_update_time - topic_period_info_map[check_key]->received_time).seconds();
+            topic_period_info_map[check_key]->received_time = cur_update_time ;
+            
         }
 
-        // double time_diff = (cur_update_time - prev_time).seconds();
-        // std::cout << "FrameRate : " << 1 / time_diff << " Hz" << std::endl;
-        
-        {
-            std::lock_guard<std::mutex> lock(topic_period_info_map[check_key]->mtx);
-            topic_period_info_map[check_key]->received_time = cur_update_time;
-        }
+        // std::cout << "FrameRate : " << 1 / topic_period_info_map[check_key]->frame_time_diff << " Hz" << std::endl;
 
         return;
     }
@@ -230,24 +222,6 @@ public:
             diag_info_map.erase(it);
         return true;
     }
-
-    void checkTopicFrameRate(std::string check_key)
-    {
-        rclcpp::Time cur_time = clock_->now();
-
-        {
-            std::lock_guard<std::mutex> lock(topic_period_info_map[check_key]->mtx);
-            topic_period_info_map[check_key]->frame_time_diff = (cur_time - topic_period_info_map[check_key]->received_time).seconds();
-            topic_period_info_map[check_key]->received_time = cur_time;
-        }
-
-        std::cout << "FrameRate : " << 1 / topic_period_info_map[check_key]->frame_time_diff << " Hz" << std::endl;
-
-        return;
-        // return OK;
-        
-
-    }
     
 private:
     uint8_t handleTopicPeriod(std::string check_key)
@@ -257,15 +231,18 @@ private:
             return STALE;
 
         rclcpp::Time cur_time = clock_->now();
-        topic_period_info_map[check_key]->mtx.lock();
-        rclcpp::Time prev_time = topic_period_info_map[check_key]->received_time;
-        topic_period_info_map[check_key]->mtx.unlock();
+        rclcpp::Time prev_time;
+
+        double frame_time_diff;
+        {
+            std::lock_guard<std::mutex> lock(topic_period_info_map[check_key]->mtx);
+            prev_time = topic_period_info_map[check_key]->received_time;
+            frame_time_diff = topic_period_info_map[check_key]->frame_time_diff; 
+        }
 
         double time_diff = (cur_time - prev_time).seconds();
+        // std::cout<<"time_diff : "<<time_diff<<std::endl;
         
-        double frame_time_diff = topic_period_info_map[check_key]->frame_time_diff; 
-
-        std::cout<<"frame_time_diff : "<<frame_time_diff<<std::endl;
         
 
         if ((time_diff >= topic_period_info_map[check_key]->error_timeout)||(frame_time_diff>= topic_period_info_map[check_key]->error_timeout))
@@ -280,10 +257,6 @@ private:
 
             return ERROR;
         }
-        // else if ((time_diff >= topic_period_info_map[check_key]->warn_timeout &&
-        //     topic_period_info_map[check_key]->warn_cnt >= topic_period_info_map[check_key]->warn_max_cnt)||
-        //     (frame_time_diff >= topic_period_info_map[check_key]->warn_timeout &&
-        //        topic_period_info_map[check_key]->warn_cnt >= topic_period_info_map[check_key]->warn_max_cnt))
         else if (frame_time_diff >= topic_period_info_map[check_key]->warn_timeout &&
                     topic_period_info_map[check_key]->warn_cnt >= topic_period_info_map[check_key]->warn_max_cnt)
         {
@@ -299,10 +272,6 @@ private:
 
             return ERROR;
         }
-        // else if ((frame_time_diff >= topic_period_info_map[check_key]->warn_timeout &&
-        //     topic_period_info_map[check_key]->warn_cnt < topic_period_info_map[check_key]->warn_max_cnt) ||
-        //     (frame_time_diff >= topic_period_info_map[check_key]->warn_timeout &&
-        //        topic_period_info_map[check_key]->warn_cnt < topic_period_info_map[check_key]->warn_max_cnt))
         else if (frame_time_diff >= topic_period_info_map[check_key]->warn_timeout &&
                     topic_period_info_map[check_key]->warn_cnt < topic_period_info_map[check_key]->warn_max_cnt)
         {
@@ -318,7 +287,6 @@ private:
         }
         else
         {
-            std::cout<<"------------OK-----------"<<std::endl;
             topic_period_info_map[check_key]->check_status = OK;
             topic_period_info_map[check_key]->warn_cnt = 0;
             setDiagLevel(check_key, OK);
