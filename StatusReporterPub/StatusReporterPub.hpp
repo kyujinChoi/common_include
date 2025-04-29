@@ -31,6 +31,7 @@ class StatusReporter
     typedef struct TopicPeriodInfo
     {
         int warn_cnt;
+        int warn_fps_cnt;
         int warn_max_cnt;
         double warn_timeout;  // in seconds
         double error_timeout; // in seconds
@@ -78,6 +79,7 @@ public:
 
         std::shared_ptr<topic_period_info_t> topic_period_info = std::make_shared<topic_period_info_t>();
         topic_period_info->warn_cnt = 0;
+        topic_period_info->warn_fps_cnt = 0;
         topic_period_info->warn_max_cnt = warn_max_cnt;
         topic_period_info->warn_timeout = warn_timeout;
         topic_period_info->error_timeout = error_timeout;
@@ -229,6 +231,24 @@ public:
         return true;
     }
 
+    void checkTopicFrameRate(std::string check_key)
+    {
+        rclcpp::Time cur_time = clock_->now();
+
+        {
+            std::lock_guard<std::mutex> lock(topic_period_info_map[check_key]->mtx);
+            topic_period_info_map[check_key]->frame_time_diff = (cur_time - topic_period_info_map[check_key]->received_time).seconds();
+            topic_period_info_map[check_key]->received_time = cur_time;
+        }
+
+        std::cout << "FrameRate : " << 1 / topic_period_info_map[check_key]->frame_time_diff << " Hz" << std::endl;
+
+        return;
+        // return OK;
+        
+
+    }
+    
 private:
     uint8_t handleTopicPeriod(std::string check_key)
     {
@@ -242,8 +262,10 @@ private:
         topic_period_info_map[check_key]->mtx.unlock();
 
         double time_diff = (cur_time - prev_time).seconds();
+        
         double frame_time_diff = topic_period_info_map[check_key]->frame_time_diff; 
-        // std::cout<<"Frame time diff : "<<frame_time_diff<<std::endl;
+
+        std::cout<<"frame_time_diff : "<<frame_time_diff<<std::endl;
         
 
         if ((time_diff >= topic_period_info_map[check_key]->error_timeout)||(frame_time_diff>= topic_period_info_map[check_key]->error_timeout))
@@ -258,12 +280,16 @@ private:
 
             return ERROR;
         }
+        // else if ((time_diff >= topic_period_info_map[check_key]->warn_timeout &&
+        //     topic_period_info_map[check_key]->warn_cnt >= topic_period_info_map[check_key]->warn_max_cnt)||
+        //     (frame_time_diff >= topic_period_info_map[check_key]->warn_timeout &&
+        //        topic_period_info_map[check_key]->warn_cnt >= topic_period_info_map[check_key]->warn_max_cnt))
         else if (frame_time_diff >= topic_period_info_map[check_key]->warn_timeout &&
                     topic_period_info_map[check_key]->warn_cnt >= topic_period_info_map[check_key]->warn_max_cnt)
         {
             topic_period_info_map[check_key]->check_status = ERROR;
             topic_period_info_map[check_key]->warn_cnt++;
-            std::string total_cnt = std::to_string(topic_period_info_map[check_key]->warn_cnt) + "/" + std::to_string(topic_period_info_map[check_key]->warn_max_cnt);
+            std::string total_cnt = std::to_string(topic_period_info_map[check_key]->warn_cnt) + "/" + std::to_string(topic_period_info_map[check_key]->warn_max_cnt)+" "+std::to_string(frame_time_diff);
 
             setDiagLevel(check_key, ERROR);
             setDiagMsg(check_key, "Error: Waning count max");
@@ -273,6 +299,10 @@ private:
 
             return ERROR;
         }
+        // else if ((frame_time_diff >= topic_period_info_map[check_key]->warn_timeout &&
+        //     topic_period_info_map[check_key]->warn_cnt < topic_period_info_map[check_key]->warn_max_cnt) ||
+        //     (frame_time_diff >= topic_period_info_map[check_key]->warn_timeout &&
+        //        topic_period_info_map[check_key]->warn_cnt < topic_period_info_map[check_key]->warn_max_cnt))
         else if (frame_time_diff >= topic_period_info_map[check_key]->warn_timeout &&
                     topic_period_info_map[check_key]->warn_cnt < topic_period_info_map[check_key]->warn_max_cnt)
         {
@@ -288,6 +318,7 @@ private:
         }
         else
         {
+            std::cout<<"------------OK-----------"<<std::endl;
             topic_period_info_map[check_key]->check_status = OK;
             topic_period_info_map[check_key]->warn_cnt = 0;
             setDiagLevel(check_key, OK);
