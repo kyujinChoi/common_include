@@ -63,7 +63,7 @@ public:
         std::string check_topic = std::regex_replace(node_name, pattern, "");
 
         param.insertParam("node_name", node_name);
-        param.insertParam("check_topic", "/check"+check_topic);
+        param.insertParam("check_topic", "check"+check_topic);
         initPubs();
     }
     ~StatusReporter() {}
@@ -283,7 +283,7 @@ private:
             return ERROR;
         }
         else if (frame_time_diff >= topic_period_info_map[check_key]->warn_timeout &&
-                    topic_period_info_map[check_key]->warn_cnt < topic_period_info_map[check_key]->warn_max_cnt) ||
+                    topic_period_info_map[check_key]->warn_cnt < topic_period_info_map[check_key]->warn_max_cnt) 
         {
             topic_period_info_map[check_key]->check_status = WARN;
             topic_period_info_map[check_key]->warn_cnt++;
