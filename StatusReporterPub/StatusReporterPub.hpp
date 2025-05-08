@@ -6,6 +6,8 @@
 #include "std_msgs/msg/u_int8.hpp"
 #include "rcl_interfaces/msg/log.hpp"
 #include "parameter/parameter.h"
+#include <regex>
+
 
 #pragma once
 
@@ -51,10 +53,17 @@ class StatusReporter
         STALE = 3
     };
 public:
-    StatusReporter(rclcpp::Node *node, std::string check_topic) : node_(node), clock_(std::make_shared<rclcpp::Clock>(RCL_ROS_TIME))
+    StatusReporter(rclcpp::Node *node ) : node_(node), clock_(std::make_shared<rclcpp::Clock>(RCL_ROS_TIME))
     {
-        param.insertParam("node_name", node->get_fully_qualified_name());
-        param.insertParam("check_topic", check_topic);
+        
+
+        std::string node_name = node->get_fully_qualified_name(); 
+        
+        std::regex pattern("/P\\d+");  
+        std::string check_topic = std::regex_replace(node_name, pattern, "");
+
+        param.insertParam("node_name", node_name);
+        param.insertParam("check_topic", "/check"+check_topic);
         initPubs();
     }
     ~StatusReporter() {}
@@ -105,7 +114,7 @@ public:
             topic_period_info_map[check_key]->received_time = cur_update_time ;
             
         }
-
+        // std::cout<<"frame_time_diff : "<<topic_period_info_map[check_key]->frame_time_diff<<std::endl;
         // std::cout << "FrameRate : " << 1 / topic_period_info_map[check_key]->frame_time_diff << " Hz" << std::endl;
 
         return;
@@ -245,7 +254,6 @@ private:
         double time_diff = (cur_time - prev_time).seconds();
         // std::cout<<"time_diff : "<<time_diff<<std::endl;
         
-        
 
         if ((time_diff >= topic_period_info_map[check_key]->error_timeout)||(frame_time_diff>= topic_period_info_map[check_key]->error_timeout))
         {
@@ -275,7 +283,7 @@ private:
             return ERROR;
         }
         else if (frame_time_diff >= topic_period_info_map[check_key]->warn_timeout &&
-                    topic_period_info_map[check_key]->warn_cnt < topic_period_info_map[check_key]->warn_max_cnt)
+                    topic_period_info_map[check_key]->warn_cnt < topic_period_info_map[check_key]->warn_max_cnt) ||
         {
             topic_period_info_map[check_key]->check_status = WARN;
             topic_period_info_map[check_key]->warn_cnt++;
@@ -283,8 +291,19 @@ private:
             setDiagMsg(check_key, "Warning: No message received");
             clearDiagKeyVal(check_key);
             setDiagKeyVal(check_key, "topic", check_key);
-            setDiagKeyVal(check_key, "elapsed_time", std::to_string(time_diff));
+            setDiagKeyVal(check_key, "elapsed_time", std::to_string(frame_time_diff));
             setDiagKeyVal(check_key, "Hz", std::to_string(1 / frame_time_diff));
+            return WARN;
+        }
+        else if (time_diff >= topic_period_info_map[check_key]->warn_timeout &&
+            topic_period_info_map[check_key]->warn_cnt < topic_period_info_map[check_key]->warn_max_cnt)
+        {
+            topic_period_info_map[check_key]->check_status = WARN;
+            setDiagLevel(check_key, WARN);
+            setDiagMsg(check_key, "Warning: No message received");
+            clearDiagKeyVal(check_key);
+            setDiagKeyVal(check_key, "topic", check_key);
+            setDiagKeyVal(check_key, "elapsed_time", std::to_string(time_diff));
             return WARN;
         }
         else
