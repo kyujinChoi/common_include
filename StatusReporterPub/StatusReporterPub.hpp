@@ -107,7 +107,12 @@ public:
     {
 
         rclcpp::Time cur_update_time = clock_->now();
-      
+
+        if (topic_period_info_map[check_key]->received_time == rclcpp::Time(0, 0, RCL_ROS_TIME)) {
+            topic_period_info_map[check_key]->received_time = cur_update_time;
+            return;  
+        }
+
         {
             std::lock_guard<std::mutex> lock(topic_period_info_map[check_key]->mtx);
             topic_period_info_map[check_key]->frame_time_diff = (cur_update_time - topic_period_info_map[check_key]->received_time).seconds();
@@ -252,6 +257,7 @@ private:
         }
 
         double time_diff = (cur_time - prev_time).seconds();
+        
         // std::cout<<"time_diff : "<<time_diff<<std::endl;
         
 
