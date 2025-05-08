@@ -6,6 +6,8 @@
 #include "std_msgs/msg/u_int8.hpp"
 #include "rcl_interfaces/msg/log.hpp"
 #include "parameter/parameter.h"
+#include <regex>
+
 
 #pragma once
 
@@ -31,7 +33,6 @@ class StatusReporter
     typedef struct TopicPeriodInfo
     {
         int warn_cnt;
-        int warn_fps_cnt;
         int warn_max_cnt;
         double warn_timeout;  // in seconds
         double error_timeout; // in seconds
@@ -42,6 +43,8 @@ class StatusReporter
         double frame_time_diff;
 
     } topic_period_info_t;
+
+
     enum
     {
         OK = 0,
@@ -50,10 +53,17 @@ class StatusReporter
         STALE = 3
     };
 public:
-    StatusReporter(rclcpp::Node *node, std::string check_topic) : node_(node), clock_(std::make_shared<rclcpp::Clock>(RCL_ROS_TIME))
+    StatusReporter(rclcpp::Node *node ) : node_(node), clock_(std::make_shared<rclcpp::Clock>(RCL_ROS_TIME))
     {
-        param.insertParam("node_name", node->get_fully_qualified_name());
-        param.insertParam("check_topic", check_topic);
+        
+
+        std::string node_name = node->get_fully_qualified_name(); 
+        
+        std::regex pattern("/P\\d+");  
+        std::string check_topic = std::regex_replace(node_name, pattern, "");
+
+        param.insertParam("node_name", node_name);
+        param.insertParam("check_topic", "check"+check_topic);
         initPubs();
     }
     ~StatusReporter() {}
@@ -69,8 +79,9 @@ public:
         return;
     }
 
-    void createTopicPeriodInfo(std::string check_key, double warn_timeout, int warn_max_cnt, double error_timeout)
-    {
+    void createTopicPeriodInfo(std::string check_key,std::string hw_id, double warn_timeout, int warn_max_cnt, double error_timeout)
+    {   
+
         if (hasDiagKey(check_key))
         {
             std::cout << "Already exist in diag_key: " << check_key << std::endl;
@@ -79,7 +90,6 @@ public:
 
         std::shared_ptr<topic_period_info_t> topic_period_info = std::make_shared<topic_period_info_t>();
         topic_period_info->warn_cnt = 0;
-        topic_period_info->warn_fps_cnt = 0;
         topic_period_info->warn_max_cnt = warn_max_cnt;
         topic_period_info->warn_timeout = warn_timeout;
         topic_period_info->error_timeout = error_timeout;
@@ -87,8 +97,9 @@ public:
         topic_period_info->check_status = OK;
         topic_period_info_map[check_key] = topic_period_info;
 
+        
         createDiagInfo(check_key);
-
+        setDiagHwId(check_key, hw_id);
         return;
     }
 
@@ -96,14 +107,19 @@ public:
     {
 
         rclcpp::Time cur_update_time = clock_->now();
-      
+
+        if (topic_period_info_map[check_key]->received_time == rclcpp::Time(0, 0, RCL_ROS_TIME)) {
+            topic_period_info_map[check_key]->received_time = cur_update_time;
+            return;  
+        }
+
         {
             std::lock_guard<std::mutex> lock(topic_period_info_map[check_key]->mtx);
             topic_period_info_map[check_key]->frame_time_diff = (cur_update_time - topic_period_info_map[check_key]->received_time).seconds();
             topic_period_info_map[check_key]->received_time = cur_update_time ;
             
         }
-
+        // std::cout<<"frame_time_diff : "<<topic_period_info_map[check_key]->frame_time_diff<<std::endl;
         // std::cout << "FrameRate : " << 1 / topic_period_info_map[check_key]->frame_time_diff << " Hz" << std::endl;
 
         return;
@@ -241,8 +257,8 @@ private:
         }
 
         double time_diff = (cur_time - prev_time).seconds();
-        // std::cout<<"time_diff : "<<time_diff<<std::endl;
         
+        // std::cout<<"time_diff : "<<time_diff<<std::endl;
         
 
         if ((time_diff >= topic_period_info_map[check_key]->error_timeout)||(frame_time_diff>= topic_period_info_map[check_key]->error_timeout))
@@ -252,7 +268,7 @@ private:
             setDiagMsg(check_key, "Error: No message received");
             clearDiagKeyVal(check_key);
             setDiagKeyVal(check_key, "topic", check_key);
-            setDiagKeyVal(check_key, "elapsed_time", std::to_string(time_diff));
+            setDiagKeyVal(check_key, "elapsed_time", std::to_string(frame_time_diff));
             setDiagKeyVal(check_key, "Hz", std::to_string(1 / frame_time_diff));
 
             return ERROR;
@@ -273,7 +289,7 @@ private:
             return ERROR;
         }
         else if (frame_time_diff >= topic_period_info_map[check_key]->warn_timeout &&
-                    topic_period_info_map[check_key]->warn_cnt < topic_period_info_map[check_key]->warn_max_cnt)
+                    topic_period_info_map[check_key]->warn_cnt < topic_period_info_map[check_key]->warn_max_cnt) 
         {
             topic_period_info_map[check_key]->check_status = WARN;
             topic_period_info_map[check_key]->warn_cnt++;
@@ -281,8 +297,19 @@ private:
             setDiagMsg(check_key, "Warning: No message received");
             clearDiagKeyVal(check_key);
             setDiagKeyVal(check_key, "topic", check_key);
-            setDiagKeyVal(check_key, "elapsed_time", std::to_string(time_diff));
+            setDiagKeyVal(check_key, "elapsed_time", std::to_string(frame_time_diff));
             setDiagKeyVal(check_key, "Hz", std::to_string(1 / frame_time_diff));
+            return WARN;
+        }
+        else if (time_diff >= topic_period_info_map[check_key]->warn_timeout &&
+            topic_period_info_map[check_key]->warn_cnt < topic_period_info_map[check_key]->warn_max_cnt)
+        {
+            topic_period_info_map[check_key]->check_status = WARN;
+            setDiagLevel(check_key, WARN);
+            setDiagMsg(check_key, "Warning: No message received");
+            clearDiagKeyVal(check_key);
+            setDiagKeyVal(check_key, "topic", check_key);
+            setDiagKeyVal(check_key, "elapsed_time", std::to_string(time_diff));
             return WARN;
         }
         else
@@ -304,6 +331,8 @@ private:
     {
         uint8_t result = OK;
         std_msgs::msg::UInt8 result_status;
+
+        // std::cout<<"callback100sTimer"<<std::endl;
     
         for (const auto &[key, period_info] : topic_period_info_map)
         {
@@ -335,14 +364,17 @@ private:
     }
 
     void callback1sTimer()
-    {
+    {   
+        // std::cout<<"callback1sTimer"<<std::endl;
+
         diag_arr_msg.status.clear();
         diag_arr_msg.header.stamp = rclcpp::Clock().now();
-
+        
         for (const auto &[key, diag_info] : diag_info_map)
         {
             std::lock_guard<std::mutex> lock(diag_info->mtx);
             diag_arr_msg.status.push_back(diag_info->diag_status);
+
         }
         pubDiagnostic->publish(diag_arr_msg);
         
@@ -351,7 +383,6 @@ private:
 
     void initPubs()
     {   
-
         pubLogMsg = node_->create_publisher<rcl_interfaces::msg::Log>("spatial_logmsg", 1);
         pubCheck = node_->create_publisher<std_msgs::msg::UInt8>(param.getParamStr("check_topic"), rclcpp::SensorDataQoS());
         pubDiagnostic = node_->create_publisher<diagnostic_msgs::msg::DiagnosticArray>("/diagnostics", 10);
