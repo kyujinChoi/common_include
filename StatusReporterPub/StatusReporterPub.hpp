@@ -41,6 +41,7 @@ class StatusReporter
         std::mutex mtx;
 
         double frame_time_diff;
+        bool initialFlag;
 
     } topic_period_info_t;
 
@@ -52,6 +53,7 @@ class StatusReporter
         ERROR = 2,
         STALE = 3
     };
+    
 public:
     StatusReporter(rclcpp::Node *node ) : node_(node), clock_(std::make_shared<rclcpp::Clock>(RCL_ROS_TIME))
     {
@@ -65,6 +67,8 @@ public:
         param.insertParam("node_name", node_name);
         param.insertParam("check_topic", "check"+check_topic);
         initPubs();
+
+        
     }
     ~StatusReporter() {}
 
@@ -95,7 +99,10 @@ public:
         topic_period_info->error_timeout = error_timeout;
         topic_period_info->received_time = rclcpp::Time(0,0,RCL_ROS_TIME);
         topic_period_info->check_status = OK;
+        topic_period_info->initialFlag = false;
+
         topic_period_info_map[check_key] = topic_period_info;
+        
 
         
         createDiagInfo(check_key);
@@ -118,6 +125,11 @@ public:
             topic_period_info_map[check_key]->frame_time_diff = (cur_update_time - topic_period_info_map[check_key]->received_time).seconds();
             topic_period_info_map[check_key]->received_time = cur_update_time ;
             
+        }
+
+        if (topic_period_info_map[check_key]->initialFlag == false){
+            pubLogMessage(::INFO,check_key+" topic monitoring start!");
+            topic_period_info_map[check_key]->initialFlag = true;
         }
         // std::cout<<"frame_time_diff : "<<topic_period_info_map[check_key]->frame_time_diff<<std::endl;
         // std::cout << "FrameRate : " << 1 / topic_period_info_map[check_key]->frame_time_diff << " Hz" << std::endl;
@@ -242,7 +254,6 @@ public:
 private:
     uint8_t handleTopicPeriod(std::string check_key)
     {
-
         if (topic_period_info_map[check_key]->received_time.seconds() == rclcpp::Time(0).seconds())
             return STALE;
 
@@ -257,12 +268,13 @@ private:
         }
 
         double time_diff = (cur_time - prev_time).seconds();
-        
-        // std::cout<<"time_diff : "<<time_diff<<std::endl;
+    
         
 
         if ((time_diff >= topic_period_info_map[check_key]->error_timeout)||(frame_time_diff>= topic_period_info_map[check_key]->error_timeout))
         {
+            // std::cout<<"time_diff : "<<time_diff<<std::endl;
+            // std::cout<<"frame_time_diff in handletopic period : "<<frame_time_diff<<std::endl;
             topic_period_info_map[check_key]->check_status = ERROR;
             setDiagLevel(check_key, ERROR);
             setDiagMsg(check_key, "Error: No message received");
@@ -271,6 +283,7 @@ private:
             setDiagKeyVal(check_key, "elapsed_time", std::to_string(frame_time_diff));
             setDiagKeyVal(check_key, "Hz", std::to_string(1 / frame_time_diff));
 
+            pubLogMessage(::ERROR, "ERROR!, Hz : " + std::to_string(1 / frame_time_diff));
             return ERROR;
         }
         else if (frame_time_diff >= topic_period_info_map[check_key]->warn_timeout &&
@@ -286,6 +299,7 @@ private:
             setDiagKeyVal(check_key, "topic", check_key);
             setDiagKeyVal(check_key, "warn_cnt/warn_max_cnt and timediff", total_cnt);
 
+            pubLogMessage(::ERROR, "ERROR!, Total warn cnt : " + total_cnt);
             return ERROR;
         }
         else if (frame_time_diff >= topic_period_info_map[check_key]->warn_timeout &&
@@ -299,6 +313,8 @@ private:
             setDiagKeyVal(check_key, "topic", check_key);
             setDiagKeyVal(check_key, "elapsed_time", std::to_string(frame_time_diff));
             setDiagKeyVal(check_key, "Hz", std::to_string(1 / frame_time_diff));
+
+            pubLogMessage(::WARN, "WARN!, Hz : " + std::to_string(1 / frame_time_diff));
             return WARN;
         }
         else if (time_diff >= topic_period_info_map[check_key]->warn_timeout &&
@@ -310,6 +326,8 @@ private:
             clearDiagKeyVal(check_key);
             setDiagKeyVal(check_key, "topic", check_key);
             setDiagKeyVal(check_key, "elapsed_time", std::to_string(time_diff));
+
+            pubLogMessage(::WARN, "100ms callback WARN!, Hz : " + std::to_string(1 / time_diff));
             return WARN;
         }
         else
@@ -331,8 +349,6 @@ private:
     {
         uint8_t result = OK;
         std_msgs::msg::UInt8 result_status;
-
-        // std::cout<<"callback100sTimer"<<std::endl;
     
         for (const auto &[key, period_info] : topic_period_info_map)
         {
@@ -385,7 +401,7 @@ private:
     {   
         pubLogMsg = node_->create_publisher<rcl_interfaces::msg::Log>("spatial_logmsg", 1);
         pubCheck = node_->create_publisher<std_msgs::msg::UInt8>(param.getParamStr("check_topic"), rclcpp::SensorDataQoS());
-        pubDiagnostic = node_->create_publisher<diagnostic_msgs::msg::DiagnosticArray>("/diagnostics_agg", 10);
+        pubDiagnostic = node_->create_publisher<diagnostic_msgs::msg::DiagnosticArray>("/diagnostics", 10);
         timer_100ms = node_->create_wall_timer(100ms, std::bind(&StatusReporter::callback100msTimer, this));
         timer_1s = node_->create_wall_timer(1s, std::bind(&StatusReporter::callback1sTimer, this));
 
