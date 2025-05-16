@@ -6,6 +6,7 @@
 #include "std_msgs/msg/u_int8.hpp"
 #include "rcl_interfaces/msg/log.hpp"
 #include "parameter/parameter.h"
+#include "utils/string.h"
 #include <regex>
 
 
@@ -57,13 +58,11 @@ class StatusReporter
 public:
     StatusReporter(rclcpp::Node *node ) : node_(node), clock_(std::make_shared<rclcpp::Clock>(RCL_ROS_TIME))
     {
-        
-
         std::string node_name = node->get_fully_qualified_name(); 
+        std::string node_ns = node->get_namespace(); 
         
-        std::regex pattern("/P\\d+");  
-        std::string check_topic = std::regex_replace(node_name, pattern, "");
-
+        std::string check_topic  = replaceAll(node_name, node_ns, "");
+        param.insertParam("node_ns", node_ns);
         param.insertParam("node_name", node_name);
         param.insertParam("check_topic", "check"+check_topic);
         initPubs();
@@ -127,10 +126,7 @@ public:
             
         }
 
-        if (topic_period_info_map[check_key]->initialFlag == false){
-            pubLogMessage(::INFO,check_key+" topic monitoring start!");
-            topic_period_info_map[check_key]->initialFlag = true;
-        }
+        
         // std::cout<<"frame_time_diff : "<<topic_period_info_map[check_key]->frame_time_diff<<std::endl;
         // std::cout << "FrameRate : " << 1 / topic_period_info_map[check_key]->frame_time_diff << " Hz" << std::endl;
 
@@ -312,9 +308,8 @@ private:
             clearDiagKeyVal(check_key);
             setDiagKeyVal(check_key, "topic", check_key);
             setDiagKeyVal(check_key, "elapsed_time", std::to_string(frame_time_diff));
-            setDiagKeyVal(check_key, "Hz", std::to_string(1 / frame_time_diff));
 
-            pubLogMessage(::WARN, "WARN!, Hz : " + std::to_string(1 / frame_time_diff));
+            pubLogMessage(::WARN, "WARN!, elapsed_time : " + std::to_string(frame_time_diff));
             return WARN;
         }
         else if (time_diff >= topic_period_info_map[check_key]->warn_timeout &&
@@ -327,11 +322,17 @@ private:
             setDiagKeyVal(check_key, "topic", check_key);
             setDiagKeyVal(check_key, "elapsed_time", std::to_string(time_diff));
 
-            pubLogMessage(::WARN, "100ms callback WARN!, Hz : " + std::to_string(1 / time_diff));
+            pubLogMessage(::WARN, "WARN!, elapsed_time : " + std::to_string(time_diff));
             return WARN;
         }
         else
         {
+            if (topic_period_info_map[check_key]->initialFlag == false)
+            {
+                pubLogMessage(::INFO,check_key+" topic monitoring start!");
+                topic_period_info_map[check_key]->initialFlag = true;
+            }
+            
             topic_period_info_map[check_key]->check_status = OK;
             topic_period_info_map[check_key]->warn_cnt = 0;
             setDiagLevel(check_key, OK);
@@ -347,6 +348,8 @@ private:
 
     void callback100msTimer()
     {
+        if(!rclcpp::ok())
+            return;
         uint8_t result = OK;
         std_msgs::msg::UInt8 result_status;
     
@@ -382,7 +385,8 @@ private:
     void callback1sTimer()
     {   
         // std::cout<<"callback1sTimer"<<std::endl;
-
+        if(!rclcpp::ok())
+            return;
         diag_arr_msg.status.clear();
         diag_arr_msg.header.stamp = rclcpp::Clock().now();
         
@@ -401,6 +405,7 @@ private:
     {   
         rclcpp::QoS reliable_qos_(10);  
         reliable_qos_.reliability(RMW_QOS_POLICY_RELIABILITY_RELIABLE);
+        reliable_qos_.durability(RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL);
 
         pubLogMsg = node_->create_publisher<rcl_interfaces::msg::Log>("spatial_logmsg", reliable_qos_);
         pubCheck = node_->create_publisher<std_msgs::msg::UInt8>(param.getParamStr("check_topic"), rclcpp::SensorDataQoS());
