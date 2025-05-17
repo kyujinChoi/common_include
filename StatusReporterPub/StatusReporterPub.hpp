@@ -126,7 +126,11 @@ public:
             
         }
 
-        
+        if (topic_period_info_map[check_key]->initialFlag == false)
+        {
+            pubLogMessage(::INFO,check_key+" topic monitoring start!");
+            topic_period_info_map[check_key]->initialFlag = true;
+        }
         // std::cout<<"frame_time_diff : "<<topic_period_info_map[check_key]->frame_time_diff<<std::endl;
         // std::cout << "FrameRate : " << 1 / topic_period_info_map[check_key]->frame_time_diff << " Hz" << std::endl;
 
@@ -327,11 +331,7 @@ private:
         }
         else
         {
-            if (topic_period_info_map[check_key]->initialFlag == false)
-            {
-                pubLogMessage(::INFO,check_key+" topic monitoring start!");
-                topic_period_info_map[check_key]->initialFlag = true;
-            }
+            
             
             topic_period_info_map[check_key]->check_status = OK;
             topic_period_info_map[check_key]->warn_cnt = 0;
