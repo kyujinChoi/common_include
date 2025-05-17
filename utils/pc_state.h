@@ -10,6 +10,7 @@
 #include <mutex>
 #include <deque>
 #include <iterator>
+#include <thread>
 
 struct ProcessUsage
 {
