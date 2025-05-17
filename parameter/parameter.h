@@ -9,7 +9,6 @@
 #include <vector>
 #include <math.h>
 #include <algorithm>
-#include "coconut/coconut.h"
 
 // #define PI 3.141592
 typedef unsigned char uint8;
