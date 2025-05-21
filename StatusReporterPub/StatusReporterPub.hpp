@@ -66,8 +66,6 @@ public:
         param.insertParam("node_name", node_name);
         param.insertParam("check_topic", "check"+check_topic);
         initPubs();
-
-        
     }
     ~StatusReporter() {}
 
