@@ -7,7 +7,7 @@
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
-inline std::string to_string_with_precision(double value, int precision = 2)
+inline std::string to_string_with_precision(double value, int precision = 3)
 {
     std::ostringstream out;
     out << std::fixed << std::setprecision(precision) << value;
