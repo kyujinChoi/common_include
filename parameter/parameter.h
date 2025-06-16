@@ -42,7 +42,7 @@ public:
     template <typename T>
     bool insertParam(const std::string &key, const T &value)
     {
-        if constexpr (std::is_convertible_v<T, std::string>)
+        if constexpr (std::is_convertible<T, std::string>::value)
             params[key] = std::string(value);  // string 계열로 변환
         else
             params[key] = value;
