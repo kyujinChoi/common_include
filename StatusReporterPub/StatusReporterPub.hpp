@@ -46,16 +46,16 @@ class StatusReporter
 
     } topic_period_info_t;
 
+public:
 
-    enum
+    enum Level
     {
         OK = 0,
         WARN = 1,
         ERROR = 2,
         STALE = 3
     };
-    
-public:
+
     StatusReporter(rclcpp::Node *node ) : node_(node), clock_(std::make_shared<rclcpp::Clock>(RCL_ROS_TIME))
     {
         std::string node_name = node->get_fully_qualified_name(); 
