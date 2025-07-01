@@ -133,6 +133,12 @@ public:
 
     return;
   }
+
+  inline static void removeNaNCloud(
+    const typename pcl::PointCloud<PointT>::Ptr &cloud){
+      std::vector<int> indices;
+      pcl::removeNaNFromPointCloud(*cloud, *cloud, indices);
+  }
 };
 
 #endif
