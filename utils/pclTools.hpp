@@ -34,15 +34,19 @@ public:
   // 편의를 위한 typedef (스마트 포인터)
   using PointCloudPtr = typename pcl::PointCloud<PointT>::Ptr;
 
-  inline static typename pcl::PointCloud<PointT>::Ptr voxelGridSubsample(
-      const typename pcl::PointCloud<PointT>::Ptr &input, float leaf_size)
+  inline static void voxelGridSubsample(
+      const typename pcl::PointCloud<PointT>::Ptr &input, typename pcl::PointCloud<PointT>::Ptr &output, float leaf_size)
   {
-    typename pcl::PointCloud<PointT>::Ptr output(new pcl::PointCloud<PointT>());
-    pcl::VoxelGrid<PointT> voxel_filter;
-    voxel_filter.setInputCloud(input);
-    voxel_filter.setLeafSize(leaf_size, leaf_size, leaf_size);
-    voxel_filter.filter(*output);
-    return output;
+    if (!output)
+    output.reset(new pcl::PointCloud<PointT>());
+    output->clear();
+    // reserve 는 한 번만(예: 생성자에서) 해 두시면 됩니다.
+    // output->points.reserve(max_expected_size);
+
+    pcl::VoxelGrid<PointT> vg;
+    vg.setInputCloud(input);
+    vg.setLeafSize(leaf_size, leaf_size, leaf_size);
+    vg.filter(*output);
   }
 
   // 지정한 반경 내에서 균일하게 샘플링
