@@ -60,8 +60,17 @@ public:
     {
         std::string node_name = node->get_fully_qualified_name(); 
         std::string node_ns = node->get_namespace(); 
+        std::string check_topic;
+
+        if(node_ns == "/")
+        {
+            check_topic = node_name;
+        }
+        else
+        {
+            check_topic  = replaceAll(node_name, node_ns, "");
+        }
         
-        std::string check_topic  = replaceAll(node_name, node_ns, "");
         param.insertParam("node_ns", node_ns);
         param.insertParam("node_name", node_name);
         param.insertParam("check_topic", "check"+check_topic);
