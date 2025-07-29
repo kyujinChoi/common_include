@@ -10,6 +10,7 @@
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/filters/random_sample.h>
 #include <pcl/filters/uniform_sampling.h>
+#include <pcl/filters/approximate_voxel_grid.h>
 
 #include <pcl/common/transforms.h>
 
@@ -34,6 +35,18 @@ public:
   // 편의를 위한 typedef (스마트 포인터)
   using PointCloudPtr = typename pcl::PointCloud<PointT>::Ptr;
 
+  /**
+ * @brief 정확한 Voxel Grid 기반 다운샘플링
+ * 
+ * 입력된 포인트 클라우드를 leaf_size 크기의 복셀로 분할하고,
+ * 각 복셀 내의 centroid를 계산하여 다운샘플링합니다.
+ * 정밀한 매칭이나 맵 생성 등 정확도가 중요한 경우에 적합합니다.
+ *
+ * @param input 입력 포인트 클라우드
+ * @param output 다운샘플링된 출력 포인트 클라우드
+ * @param leaf_size 복셀 크기 (m)
+ */
+
   inline static void voxelGridSubsample(
       const typename pcl::PointCloud<PointT>::Ptr &input, typename pcl::PointCloud<PointT>::Ptr &output, float leaf_size)
   {
@@ -48,6 +61,34 @@ public:
     vg.setLeafSize(leaf_size, leaf_size, leaf_size);
     vg.filter(*output);
   }
+
+  /**
+ * @brief 근사 Voxel Grid 기반 고속 다운샘플링
+ * 
+ * 입력된 포인트 클라우드를 leaf_size 크기의 복셀로 분할하고,
+ * 각 복셀의 representative point를 근사적으로 계산하여 다운샘플링합니다.
+ * 실시간성 또는 빠른 처리 속도가 중요한 경우에 적합합니다.
+ *
+ * @param input 입력 포인트 클라우드
+ * @param output 다운샘플링된 출력 포인트 클라우드
+ * @param leaf_size 복셀 크기 (m)
+ */
+
+  inline static void ApproximateVoxelGridSubsample(
+      const typename pcl::PointCloud<PointT>::Ptr &input, typename pcl::PointCloud<PointT>::Ptr &output, float leaf_size)
+  {
+    if (!output)
+    output.reset(new pcl::PointCloud<PointT>());
+    output->clear();
+    // reserve 는 한 번만(예: 생성자에서) 해 두시면 됩니다.
+    // output->points.reserve(max_expected_size);
+
+    pcl::ApproximateVoxelGrid<PointT> vg;
+    vg.setInputCloud(input);
+    vg.setLeafSize(leaf_size, leaf_size, leaf_size);
+    vg.filter(*output);
+  }
+
 
   // 지정한 반경 내에서 균일하게 샘플링
   inline static typename pcl::PointCloud<PointT>::Ptr uniformSubsample(
