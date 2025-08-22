@@ -170,4 +170,27 @@ inline void stopWatchLap(std::string msg)
     std::cout << msg << " " << diff << std::endl;
   return;
 }
+
+inline void stopWatchStartMS()
+{
+  std::cout << "\n#### Stop Watch START ####" << std::endl;
+  struct timeval time_now {};
+  gettimeofday(&time_now, nullptr);
+
+  double msec = time_now.tv_sec % 100 * 1000.0; // 초 → ms
+  msec += time_now.tv_usec / 1000.0;            // µs → ms
+  __STOP_WATCH_START = msec;
+  return;
+}
+inline double stopWatchLapMS(std::string msg)
+{
+  struct timeval time_now {};
+  gettimeofday(&time_now, nullptr);
+
+  double msec = time_now.tv_sec % 100 * 1000.0; // 초 → ms
+  msec += time_now.tv_usec / 1000.0;            // µs → ms
+
+  double diff = msec - __STOP_WATCH_START;
+  return diff;
+}
 #endif
