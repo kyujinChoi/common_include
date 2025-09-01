@@ -56,19 +56,20 @@ public:
         STALE = 3
     };
 
-    StatusReporter(rclcpp::Node *node ) : node_(node), clock_(std::make_shared<rclcpp::Clock>(RCL_ROS_TIME))
+    StatusReporter(rclcpp::Node *node, std::string check_topic = "") : node_(node), clock_(std::make_shared<rclcpp::Clock>(RCL_ROS_TIME))
     {
         std::string node_name = node->get_fully_qualified_name(); 
         std::string node_ns = node->get_namespace(); 
-        std::string check_topic;
+        // std::string check_topic;
 
-        if(node_ns == "/")
+        if(node_ns != "/")
+        {
+            node_name  = replaceAll(node_name, node_ns, "");
+        }
+
+        if (check_topic.empty())
         {
             check_topic = node_name;
-        }
-        else
-        {
-            check_topic  = replaceAll(node_name, node_ns, "");
         }
         
         param.insertParam("node_ns", node_ns);
