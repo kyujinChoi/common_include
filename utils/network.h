@@ -1,11 +1,23 @@
 #ifndef UTIL_NETWORK_H_
 #define UTIL_NETWORK_H_
 
-#include <netinet/in.h>
+#include <cstring>
+#include <cstdio>
+
 #include <arpa/inet.h>
 #include <sys/socket.h>
-#include <cstring>
-#include <stdio.h>
+#include <netinet/in.h>
+#include <netinet/ip.h>
+#include <netinet/udp.h>
+#include <netinet/if_ether.h>
+#include <netpacket/packet.h>
+#include <net/ethernet.h>
+#include <net/if.h>
+#include <ifaddrs.h>
+#include <vector>
+#include <unistd.h>
+#include <fcntl.h>
+
 #define MAX_BUFFER_SIZE 99999
 typedef unsigned char uint8;
 
@@ -84,13 +96,112 @@ inline int startup_udp(int port)
     printf("lidar socket fd is %d\n", sockfd);
     return sockfd;
 }
-inline ssize_t read_from_udp(int sockfd, uint8* buf, int size)
+inline ssize_t read_from_udp(int sockfd, std::vector<uint8_t>& buf, int size)
 {
     struct sockaddr_in sender_address;
 
     socklen_t sender_address_len = sizeof(sender_address);
-    ssize_t nbytes = recvfrom(sockfd, buf, size,
+    ssize_t nbytes = recvfrom(sockfd, buf.data(), size,
                                   0, (struct sockaddr *)&sender_address, &sender_address_len);
     return nbytes;
+}
+inline std::string mac_to_string(const uint8_t mac[ETH_ALEN])
+{
+    char buf[18]; // "xx:xx:xx:xx:xx:xx"
+    std::snprintf(buf, sizeof(buf),
+                  "%02X:%02X:%02X:%02X:%02X:%02X",
+                  mac[0], mac[1], mac[2],
+                  mac[3], mac[4], mac[5]);
+    return std::string(buf);
+}
+inline int open_interface(const std::string &ifname, int ifindex)
+{
+    int sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+    if (sockfd < 0)
+    {
+        perror(("socket(AF_PACKET) failed on " + ifname).c_str());
+        return -1;
+    }
+
+    sockaddr_ll sll{};
+    sll.sll_family = AF_PACKET;
+    sll.sll_ifindex = ifindex;
+    sll.sll_protocol = htons(ETH_P_ALL);
+
+    if (bind(sockfd, reinterpret_cast<sockaddr *>(&sll), sizeof(sll)) < 0)
+    {
+        perror(("bind(AF_PACKET) failed on " + ifname).c_str());
+        close(sockfd);
+        return -1;
+    }
+    int flags = fcntl(sockfd, F_GETFL, 0);
+    if (flags != -1)
+    {
+        fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
+    }
+    return sockfd;
+}
+inline ether_header* get_ether_header(std::vector<uint8_t>& buf)
+{
+    auto *eth = reinterpret_cast<ether_header *>(buf.data());
+    if (ntohs(eth->ether_type) != ETHERTYPE_IP)
+        return nullptr; // IPv4만
+    return eth;
+}
+inline iphdr* get_ip_header(std::vector<uint8_t>& buf)
+{
+    size_t offset = sizeof(ether_header);
+    if (static_cast<size_t>(buf.size()) < offset + sizeof(iphdr))
+        return nullptr;
+    auto *ip = reinterpret_cast<iphdr *>(buf.data() + offset);
+    if (ip->version != 4)
+        return nullptr;
+    size_t ip_header_len = ip->ihl * 4;
+    if (static_cast<size_t>(buf.size()) < offset + ip_header_len + sizeof(udphdr))
+        return nullptr;
+    if (ip->protocol != IPPROTO_UDP)
+        return nullptr;
+    return ip;
+}
+inline udphdr* get_udp_header(std::vector<uint8_t>& buf)
+{
+    size_t offset = sizeof(ether_header);
+    auto *ip = reinterpret_cast<iphdr *>(buf.data() + offset);
+    size_t ip_header_len = ip->ihl * 4;
+    auto *udp = reinterpret_cast<udphdr *>(buf.data() + offset + ip_header_len);
+    uint16_t udp_len = ntohs(udp->len);
+    if (udp_len < sizeof(udphdr))
+        return nullptr;
+    return udp;
+}
+inline std::string get_src_ip(iphdr* ip)
+{
+    in_addr src_addr{};
+    src_addr.s_addr = ip->saddr;
+    char ip_str[INET_ADDRSTRLEN];
+    if (!inet_ntop(AF_INET, &src_addr, ip_str, sizeof(ip_str)))
+    {
+        return "";
+    }
+    return std::string(ip_str);
+}
+inline int get_src_port(udphdr* udp)
+{
+    return ntohs(udp->source);
+}
+inline std::string get_dst_ip(iphdr* ip)
+{
+    in_addr src_addr{};
+    src_addr.s_addr = ip->daddr;
+    char ip_str[INET_ADDRSTRLEN];
+    if (!inet_ntop(AF_INET, &src_addr, ip_str, sizeof(ip_str)))
+    {
+        return "";
+    }
+    return std::string(ip_str);
+}
+inline int get_dst_port(udphdr* udp)
+{
+    return ntohs(udp->dest);
 }
 #endif
