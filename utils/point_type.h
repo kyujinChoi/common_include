@@ -27,6 +27,21 @@ struct PointXYZIRT {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 } EIGEN_ALIGN16;
 
+struct PointXYZRGBI {
+    PCL_ADD_POINT4D;
+    PCL_ADD_RGB;
+    float intensity;
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+} EIGEN_ALIGN16;
+
+struct PointXYZRGBIN {
+    PCL_ADD_POINT4D;
+    PCL_ADD_RGB;
+    PCL_ADD_NORMAL4D;
+    float intensity;
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+} EIGEN_ALIGN16;
+
 POINT_CLOUD_REGISTER_POINT_STRUCT(
     PointXYZIR,
     (float, x, x)(float, y, y)(float, z, z)(float, intensity, intensity)(std::uint16_t, ring, ring))
@@ -36,5 +51,11 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(
 POINT_CLOUD_REGISTER_POINT_STRUCT(
     PointXYZIRT,
     (float, x, x)(float, y, y)(float, z, z)(float, intensity, intensity)(std::uint16_t, ring, ring)(double, timestamp, timestamp))
+POINT_CLOUD_REGISTER_POINT_STRUCT(
+    PointXYZRGBI,
+    (float, x, x)(float, y, y)(float, z, z)(float, rgb, rgb)(float, intensity, intensity))
+POINT_CLOUD_REGISTER_POINT_STRUCT(
+    PointXYZRGBIN,
+    (float, x, x)(float, y, y)(float, z, z)(float, rgb, rgb)(float, normal_x, normal_x)(float, normal_y, normal_y)(float, normal_z, normal_z)(float, intensity, intensity))
     
 #endif
