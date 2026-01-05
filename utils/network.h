@@ -46,6 +46,35 @@ inline int startup_tcp(std::string ip, int port)
     
     return sockfd;
 }
+inline int open_interface(const std::string &ifname)
+{
+    int sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+    if (sockfd < 0)
+    {
+        perror(("socket(AF_PACKET) failed on " + ifname).c_str());
+        return -1;
+    }
+    int ifindex = if_nametoindex(ifname.c_str());
+    if (ifindex == 0)
+        return -1;
+    sockaddr_ll sll{};
+    sll.sll_family = AF_PACKET;
+    sll.sll_ifindex = ifindex;
+    sll.sll_protocol = htons(ETH_P_ALL);
+
+    if (bind(sockfd, reinterpret_cast<sockaddr *>(&sll), sizeof(sll)) < 0)
+    {
+        perror(("bind(AF_PACKET) failed on " + ifname).c_str());
+        close(sockfd);
+        return -1;
+    }
+    int flags = fcntl(sockfd, F_GETFL, 0);
+    if (flags != -1)
+    {
+        fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
+    }
+    return sockfd;
+}
 inline int sendMsg(int sockfd, std::string msg)
 {
     int size = 0;
