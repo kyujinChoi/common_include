@@ -12,6 +12,7 @@
 #include <fstream>
 #include <sstream>
 #include <filesystem>
+#include <unistd.h>
 
 inline void mkdirRecur(const std::string& path)
 {
